@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { 
   Paintbrush, 
   MessageSquare, 
@@ -21,11 +21,30 @@ import SummaryPage from "./components/SummaryPage";
 import OriginCompletePage from "./components/OriginCompletePage";
 import HistoryListPage from "./components/HistoryListPage";
 import HistoryDetailPage from "./components/HistoryDetailPage";
+import NewDayNoticePage from "./components/NewDayNoticePage";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { ANONYMOUS_AUTHOR_NAME } from "./constants";
 
 const LOCAL_STORAGE_KEY = "party_drawing_chain_game_state_v2";
 const DATE_STREAK_KEY = "party_drawing_chain_last_open_date";
+const ARCHIVES_STORAGE_KEY = "party_drawing_chain_archives_v2";
+const DAILY_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const createFreshGameState = (sessionDate = getTodayString()): GameState => ({
+  id: `game-${Date.now()}`,
+  status: "prompt-setup",
+  chain: [],
+  updatedAt: Date.now(),
+  sessionDate
+});
 
 const normalizeAuthorName = (authorName?: string) => {
   const clean = authorName?.trim();
@@ -35,75 +54,31 @@ const normalizeAuthorName = (authorName?: string) => {
 export default function App() {
   // Parsing Error tracker
   const [hasLocalStorageError, setHasLocalStorageError] = useState(false);
+  const [showNewDayNotice, setShowNewDayNotice] = useState(false);
+  const [isDailyCheckReady, setIsDailyCheckReady] = useState(false);
 
   // Core game state
   const [gameState, setGameState] = useState<GameState>(() => {
     try {
-      const d = new Date();
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const todayString = `${year}-${month}-${day}`;
-      
-      const lastOpenDate = localStorage.getItem(DATE_STREAK_KEY);
-      
-      // Perform automatic daily maintenance reset if opened on a new day
-      if (lastOpenDate && lastOpenDate !== todayString) {
-        // Archive previous day's chain if valid before deleting!
-        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (parsed && typeof parsed === "object" && Array.isArray(parsed.chain) && parsed.chain.length > 0) {
-              const archiveRaw = localStorage.getItem("party_drawing_chain_archives_v2");
-              const archivesList = archiveRaw ? JSON.parse(archiveRaw) : [];
-              const isAlreadyArchived = archivesList.some((item: any) => item.date === lastOpenDate);
-              
-              if (!isAlreadyArchived) {
-                const firstItem = parsed.chain.find((item: any) => item.type === "text") || parsed.chain[0];
-                const archiveText = firstItem ? firstItem.content : "";
-                const record = {
-                  id: `archive-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-                  date: lastOpenDate,
-                  archivedAt: Date.now(),
-                  chain: parsed.chain,
-                  itemCount: parsed.chain.length,
-                  firstText: archiveText
-                };
-                archivesList.push(record);
-                localStorage.setItem("party_drawing_chain_archives_v2", JSON.stringify(archivesList));
-              }
-            }
-          } catch (err) {
-            console.error("Failed to archive old day's chain", err);
-          }
-        }
-
-        localStorage.setItem(DATE_STREAK_KEY, todayString);
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      } else {
-        localStorage.setItem(DATE_STREAK_KEY, todayString);
-      }
-
+      const todayString = getTodayString();
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === "object" && Array.isArray(parsed.chain)) {
-          return parsed as GameState;
+          return {
+            ...parsed,
+            sessionDate: parsed.sessionDate || localStorage.getItem(DATE_STREAK_KEY) || todayString
+          } as GameState;
         }
       }
+      localStorage.setItem(DATE_STREAK_KEY, todayString);
     } catch (e) {
       console.error("Local storage initialization failed", e);
       setTimeout(() => setHasLocalStorageError(true), 1);
     }
 
     // Default clean state targeting initial setup
-    return {
-      id: `game-${Date.now()}`,
-      status: "prompt-setup",
-      chain: [],
-      updatedAt: Date.now()
-    };
+    return createFreshGameState();
   });
 
   // Admin Reset confirmations
@@ -114,7 +89,7 @@ export default function App() {
   const [selectedArchiveId, setSelectedArchiveId] = useState<string | null>(null);
   const [archives, setArchives] = useState<ArchiveRecord[]>(() => {
     try {
-      const raw = localStorage.getItem("party_drawing_chain_archives_v2");
+      const raw = localStorage.getItem(ARCHIVES_STORAGE_KEY);
       return raw ? JSON.parse(raw) : [];
     } catch (e) {
       console.error("Failed to load archive list", e);
@@ -125,11 +100,101 @@ export default function App() {
   // Sync archives list to local storage
   useEffect(() => {
     try {
-      localStorage.setItem("party_drawing_chain_archives_v2", JSON.stringify(archives));
+      localStorage.setItem(ARCHIVES_STORAGE_KEY, JSON.stringify(archives));
     } catch (e) {
       console.error("Failed to persist archives to storage", e);
     }
   }, [archives]);
+
+  const checkAndHandleDailyReset = useCallback(() => {
+    const todayString = getTodayString();
+    const storedSessionDate = localStorage.getItem(DATE_STREAK_KEY);
+    let savedState: GameState | null = null;
+
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && Array.isArray(parsed.chain)) {
+          savedState = {
+            ...parsed,
+            sessionDate: parsed.sessionDate || storedSessionDate || todayString
+          } as GameState;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to inspect saved game state for daily reset", err);
+      return false;
+    }
+
+    const sessionDate = savedState?.sessionDate || storedSessionDate || todayString;
+    if (sessionDate === todayString) {
+      localStorage.setItem(DATE_STREAK_KEY, todayString);
+      return false;
+    }
+
+    try {
+      if (savedState && savedState.chain.length > 0) {
+        const archiveRaw = localStorage.getItem(ARCHIVES_STORAGE_KEY);
+        const archivesList: ArchiveRecord[] = archiveRaw ? JSON.parse(archiveRaw) : [];
+        const isAlreadyArchived = archivesList.some((item) => item.date === sessionDate);
+
+        if (!isAlreadyArchived) {
+          const firstItem = savedState.chain.find((item) => item.type === "text") || savedState.chain[0];
+          const record: ArchiveRecord = {
+            id: `archive-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            date: sessionDate,
+            archivedAt: Date.now(),
+            chain: savedState.chain,
+            itemCount: savedState.chain.length,
+            firstText: firstItem ? firstItem.content : ""
+          };
+          const nextArchives = [...archivesList, record];
+          localStorage.setItem(ARCHIVES_STORAGE_KEY, JSON.stringify(nextArchives));
+          setArchives(nextArchives);
+        } else {
+          setArchives(archivesList);
+        }
+      }
+
+      const freshState = createFreshGameState(todayString);
+      localStorage.setItem(DATE_STREAK_KEY, todayString);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(freshState));
+      setGameState(freshState);
+      setViewMode("current");
+      setSelectedArchiveId(null);
+      setIsAdminResetOpen(false);
+      setShowNewDayNotice(true);
+      return true;
+    } catch (err) {
+      console.error("Failed to archive old day's chain", err);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAndHandleDailyReset();
+    setIsDailyCheckReady(true);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkAndHandleDailyReset();
+      }
+    };
+    const handlePointerDown = () => {
+      checkAndHandleDailyReset();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    const timer = window.setInterval(checkAndHandleDailyReset, DAILY_CHECK_INTERVAL_MS);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      window.clearInterval(timer);
+    };
+  }, [checkAndHandleDailyReset]);
 
   // Navigation handlers
   const handleSelectArchive = (id: string) => {
@@ -148,38 +213,38 @@ export default function App() {
 
   // Sync to local storage
   useEffect(() => {
+    if (!isDailyCheckReady) return;
+
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(gameState));
     } catch (e) {
       console.error("Failed to commit game state to local storage", e);
     }
-  }, [gameState]);
+  }, [gameState, isDailyCheckReady]);
 
   // Handler: Recover from corrupt local storage state
   const handleWipeAndRecover = () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setHasLocalStorageError(false);
-    setGameState({
-      id: `game-${Date.now()}`,
-      status: "prompt-setup",
-      chain: [],
-      updatedAt: Date.now()
-    });
+    const freshState = createFreshGameState();
+    localStorage.setItem(DATE_STREAK_KEY, freshState.sessionDate);
+    setGameState(freshState);
+    setShowNewDayNotice(false);
   };
 
   // Handler: Infinite continuation restart
   const handleRestart = () => {
     setIsAdminResetOpen(false);
-    setGameState({
-      id: `game-${Date.now()}`,
-      status: "prompt-setup",
-      chain: [],
-      updatedAt: Date.now()
-    });
+    const freshState = createFreshGameState();
+    localStorage.setItem(DATE_STREAK_KEY, freshState.sessionDate);
+    setGameState(freshState);
+    setShowNewDayNotice(false);
   };
 
   // Handlers for state transitions
   const handleInitialPromptSubmit = (promptText: string, authorName?: string) => {
+    if (checkAndHandleDailyReset()) return;
+
     const newItem: ChainItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       type: "text",
@@ -192,11 +257,14 @@ export default function App() {
       ...prev,
       status: "summary",
       chain: [newItem],
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      sessionDate: getTodayString()
     }));
   };
 
   const handleDrawingSave = (dataUrl: string, authorName?: string) => {
+    if (checkAndHandleDailyReset()) return;
+
     const newItem: ChainItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       type: "drawing",
@@ -209,11 +277,14 @@ export default function App() {
       ...prev,
       status: "summary",
       chain: [...prev.chain, newItem],
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      sessionDate: getTodayString()
     }));
   };
 
   const handleGuessSave = (guessText: string, authorName?: string) => {
+    if (checkAndHandleDailyReset()) return;
+
     const newItem: ChainItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       type: "text",
@@ -226,15 +297,19 @@ export default function App() {
       ...prev,
       status: "summary",
       chain: [...prev.chain, newItem],
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      sessionDate: getTodayString()
     }));
   };
 
   const handleHandoverToNext = () => {
+    if (checkAndHandleDailyReset()) return;
+
     setGameState(prev => ({
       ...prev,
       status: "playing",
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      sessionDate: getTodayString()
     }));
   };
 
@@ -367,23 +442,27 @@ export default function App() {
       {/* Main Dynamic Workspace Section */}
       <main className="flex-grow flex items-center justify-center p-4 md:p-8 max-w-4xl mx-auto w-full">
         <div className="w-full">
+          {showNewDayNotice && (
+            <NewDayNoticePage onStart={() => setShowNewDayNotice(false)} />
+          )}
+
           {/* A. Prompt Setup (Initial Word) */}
-          {currentMode === "prompt-setup" && (
+          {!showNewDayNotice && currentMode === "prompt-setup" && (
             <PromptSetupPage onSubmit={handleInitialPromptSubmit} />
           )}
 
           {/* B. Drawing Page */}
-          {currentMode === "draw" && lastItem && (
+          {!showNewDayNotice && currentMode === "draw" && lastItem && (
             <DrawPage previousText={lastItem.content} onSaveDrawing={handleDrawingSave} />
           )}
 
           {/* C. Guessing Description Input Page */}
-          {currentMode === "guess" && lastItem && (
+          {!showNewDayNotice && currentMode === "guess" && lastItem && (
             <GuessPage previousDrawingUrl={lastItem.content} onSaveGuess={handleGuessSave} />
           )}
 
           {/* D. Turn Summary (Displaying currently created chain results) */}
-          {currentMode === "first-prompt-complete" && chain.length > 0 && (
+          {!showNewDayNotice && currentMode === "first-prompt-complete" && chain.length > 0 && (
             <OriginCompletePage
               promptText={chain[0].content}
               authorName={chain[0].authorName}
@@ -392,7 +471,7 @@ export default function App() {
           )}
 
           {/* E. Turn Summary (Displaying currently created chain results) */}
-          {currentMode === "summary" && (
+          {!showNewDayNotice && currentMode === "summary" && (
             <SummaryPage chain={chain} onContinue={handleHandoverToNext} />
           )}
         </div>

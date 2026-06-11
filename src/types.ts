@@ -15,6 +15,7 @@ export type GameState = {
   status: GameStatus;
   chain: ChainItem[];
   updatedAt: number;
+  sessionDate: string;
 };
 
 export type ArchiveRecord = {
