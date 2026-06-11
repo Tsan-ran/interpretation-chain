@@ -22,9 +22,15 @@ import OriginCompletePage from "./components/OriginCompletePage";
 import HistoryListPage from "./components/HistoryListPage";
 import HistoryDetailPage from "./components/HistoryDetailPage";
 import ConfirmDialog from "./components/ConfirmDialog";
+import { ANONYMOUS_AUTHOR_NAME } from "./constants";
 
 const LOCAL_STORAGE_KEY = "party_drawing_chain_game_state_v2";
 const DATE_STREAK_KEY = "party_drawing_chain_last_open_date";
+
+const normalizeAuthorName = (authorName?: string) => {
+  const clean = authorName?.trim();
+  return clean || ANONYMOUS_AUTHOR_NAME;
+};
 
 export default function App() {
   // Parsing Error tracker
@@ -173,12 +179,13 @@ export default function App() {
   };
 
   // Handlers for state transitions
-  const handleInitialPromptSubmit = (promptText: string) => {
+  const handleInitialPromptSubmit = (promptText: string, authorName?: string) => {
     const newItem: ChainItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       type: "text",
       content: promptText,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      authorName: normalizeAuthorName(authorName)
     };
 
     setGameState(prev => ({
@@ -189,12 +196,13 @@ export default function App() {
     }));
   };
 
-  const handleDrawingSave = (dataUrl: string) => {
+  const handleDrawingSave = (dataUrl: string, authorName?: string) => {
     const newItem: ChainItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       type: "drawing",
       content: dataUrl,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      authorName: normalizeAuthorName(authorName)
     };
 
     setGameState(prev => ({
@@ -205,12 +213,13 @@ export default function App() {
     }));
   };
 
-  const handleGuessSave = (guessText: string) => {
+  const handleGuessSave = (guessText: string, authorName?: string) => {
     const newItem: ChainItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       type: "text",
       content: guessText,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      authorName: normalizeAuthorName(authorName)
     };
 
     setGameState(prev => ({
@@ -375,7 +384,11 @@ export default function App() {
 
           {/* D. Turn Summary (Displaying currently created chain results) */}
           {currentMode === "first-prompt-complete" && chain.length > 0 && (
-            <OriginCompletePage promptText={chain[0].content} onContinue={handleHandoverToNext} />
+            <OriginCompletePage
+              promptText={chain[0].content}
+              authorName={chain[0].authorName}
+              onContinue={handleHandoverToNext}
+            />
           )}
 
           {/* E. Turn Summary (Displaying currently created chain results) */}

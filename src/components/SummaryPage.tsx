@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { ArrowLeftRight, Check, Eye } from "lucide-react";
 import { ChainItem } from "../types";
 import LargeButton from "./LargeButton";
+import { ANONYMOUS_AUTHOR_NAME } from "../constants";
 
 interface SummaryPageProps {
   chain: ChainItem[];
@@ -142,6 +143,7 @@ export default function SummaryPage({ chain, onContinue }: SummaryPageProps) {
             } else {
               stepTitle = "圖像詮釋";
             }
+            const authorName = item.authorName?.trim() || ANONYMOUS_AUTHOR_NAME;
 
             return (
               <div
@@ -156,10 +158,15 @@ export default function SummaryPage({ chain, onContinue }: SummaryPageProps) {
 
                 {/* Box Content Card */}
                 <div className="bg-white border border-[#2C2A26]/12 rounded-xl p-4 sm:p-5 shadow-sm hover:border-[#2C2A26]/25 transition-all">
-                  <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[#2C2A26]/5">
-                    <span className="text-xs font-sans font-bold text-[#7A756D]">
-                      {stepTitle}
-                    </span>
+                  <div className="flex items-center justify-between gap-3 mb-2 pb-1.5 border-b border-[#2C2A26]/5">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                      <span className="text-xs font-sans font-bold text-[#7A756D]">
+                        {stepTitle}
+                      </span>
+                      <span className="text-[11px] font-sans font-semibold text-[#7A756D]/70 truncate">
+                        由 {authorName} 留下
+                      </span>
+                    </div>
                     <span className="text-[10px] font-mono text-[#7A756D]/60 font-medium font-bold">
                       {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                     </span>

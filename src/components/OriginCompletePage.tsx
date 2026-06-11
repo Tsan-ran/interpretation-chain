@@ -1,13 +1,17 @@
 import React from "react";
 import { Check, ArrowRight } from "lucide-react";
 import LargeButton from "./LargeButton";
+import { ANONYMOUS_AUTHOR_NAME } from "../constants";
 
 interface OriginCompletePageProps {
   promptText: string;
+  authorName?: string;
   onContinue: () => void;
 }
 
-export default function OriginCompletePage({ promptText, onContinue }: OriginCompletePageProps) {
+export default function OriginCompletePage({ promptText, authorName, onContinue }: OriginCompletePageProps) {
+  const displayAuthorName = authorName?.trim() || ANONYMOUS_AUTHOR_NAME;
+
   return (
     <div className="origin-complete-page w-full min-h-[70vh] flex items-center justify-center p-4 sm:p-6 select-none">
       <style>{`
@@ -56,6 +60,13 @@ export default function OriginCompletePage({ promptText, onContinue }: OriginCom
           font-size: 14px;
           margin-bottom: 8px;
           font-weight: bold;
+        }
+        .origin-author {
+          color: #7A756D;
+          font-size: 13px;
+          line-height: 1.5;
+          margin-top: 12px;
+          font-weight: 600;
         }
         .origin-prompt-card strong {
           display: block;
@@ -110,6 +121,7 @@ export default function OriginCompletePage({ promptText, onContinue }: OriginCom
         <div className="origin-prompt-card max-w-md">
           <span>你留下的起始詮釋</span>
           <strong>「 {promptText} 」</strong>
+          <p className="origin-author">由 {displayAuthorName} 留下的起始詮釋</p>
         </div>
 
         <p className="next-invite-note">

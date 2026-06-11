@@ -1,20 +1,23 @@
 import React, { useState } from "react";
 import { MessageSquare, ArrowRight } from "lucide-react";
 import LargeButton from "./LargeButton";
+import NicknameField from "./NicknameField";
 
 interface GuessPageProps {
   previousDrawingUrl: string;
-  onSaveGuess: (guessText: string) => void;
+  onSaveGuess: (guessText: string, authorName?: string) => void;
 }
 
 export default function GuessPage({ previousDrawingUrl, onSaveGuess }: GuessPageProps) {
   const [guess, setGuess] = useState<string>("");
+  const [nickname, setNickname] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = guess.trim();
     if (!clean) return;
-    onSaveGuess(clean);
+    onSaveGuess(clean, nickname.trim() || undefined);
+    setNickname("");
   };
 
   return (
@@ -41,6 +44,8 @@ export default function GuessPage({ previousDrawingUrl, onSaveGuess }: GuessPage
           referrerPolicy="no-referrer"
         />
       </div>
+
+      <NicknameField value={nickname} onChange={setNickname} />
 
       {/* Input box form */}
       <form onSubmit={handleSubmit} className="bg-white border border-[#2C2A26]/15 rounded-xl p-6 shadow-sm space-y-4 max-w-lg mx-auto">

@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+.nickname-field {
+  max-width: 420px;
+  margin: 0 auto 16px;
+  text-align: left;
+}
+
+.nickname-field label {
+  display: block;
+  font-size: 14px;
+  color: #5f735e;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.nickname-field input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #c8d0c4;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+  font-size: 16px;
+  color: #222222;
+  outline: none;
+}
+
+.nickname-field input:focus {
+  border-color: #5f735e;
+  box-shadow: 0 0 0 3px rgba(95, 115, 94, 0.14);
+}
+
+.nickname-field small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6f6f6f;
+}

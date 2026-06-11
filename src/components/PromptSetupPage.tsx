@@ -1,19 +1,22 @@
 import React, { useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import LargeButton from "./LargeButton";
+import NicknameField from "./NicknameField";
 
 interface PromptSetupPageProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, authorName?: string) => void;
 }
 
 export default function PromptSetupPage({ onSubmit }: PromptSetupPageProps) {
   const [prompt, setPrompt] = useState<string>("");
+  const [nickname, setNickname] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = prompt.trim();
     if (!clean) return;
-    onSubmit(clean);
+    onSubmit(clean, nickname.trim() || undefined);
+    setNickname("");
   };
 
   return (
@@ -32,6 +35,8 @@ export default function PromptSetupPage({ onSubmit }: PromptSetupPageProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <NicknameField value={nickname} onChange={setNickname} />
+
         <div className="relative rounded-2xl border border-[#2C2A26]/15 bg-white p-5 shadow-sm focus-within:border-[#2C2A26]/40 transition-all">
           <textarea
             id="input-prompt-box"

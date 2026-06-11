@@ -5,6 +5,7 @@ export type ChainItem = {
   type: ChainItemType;
   content: string; // text sentence description OR canvas PNG base64 data URL
   createdAt: number;
+  authorName?: string;
 };
 
 export type GameStatus = "prompt-setup" | "playing" | "summary";
@@ -24,4 +25,3 @@ export type ArchiveRecord = {
   itemCount: number;
   firstText: string;
 };
-

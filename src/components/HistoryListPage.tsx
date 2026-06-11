@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { History, ArrowLeft, Trash2, Calendar, ChevronRight, Lock, X } from "lucide-react";
 import { ArchiveRecord } from "../types";
 import LargeButton from "./LargeButton";
+import { ANONYMOUS_AUTHOR_NAME } from "../constants";
 
 const ADMIN_PASSWORD = "114302130413";
 
@@ -164,27 +165,34 @@ export default function HistoryListPage({
             </div>
           ) : (
             <div className="space-y-3.5">
-              {archives.map((archive) => (
-                <div
-                  key={archive.id}
-                  onClick={() => onSelectArchive(archive.id)}
-                  className="history-card flex items-center justify-between gap-4 cursor-pointer hover:border-[#47624F]/30"
-                >
-                  <div className="space-y-2 flex-grow min-w-0">
-                    <div className="flex items-center gap-3">
-                      <span className="history-date">{archive.date.replace(/-/g, ".")}</span>
-                      <span className="history-meta">{`共 ${archive.itemCount} 次詮釋`}</span>
-                    </div>
-                    {archive.firstText && (
-                      <p className="history-preview truncate font-sans text-sm font-medium">
-                        <span className="text-[#5f735e] font-bold">起點：</span>
-                        {archive.firstText}
+              {archives.map((archive) => {
+                const firstAuthorName = archive.chain[0]?.authorName?.trim() || ANONYMOUS_AUTHOR_NAME;
+
+                return (
+                  <div
+                    key={archive.id}
+                    onClick={() => onSelectArchive(archive.id)}
+                    className="history-card flex items-center justify-between gap-4 cursor-pointer hover:border-[#47624F]/30"
+                  >
+                    <div className="space-y-2 flex-grow min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="history-date">{archive.date.replace(/-/g, ".")}</span>
+                        <span className="history-meta">{`共 ${archive.itemCount} 次詮釋`}</span>
+                      </div>
+                      <p className="text-xs font-sans font-semibold text-[#7A756D]/75">
+                        起點由 {firstAuthorName} 留下
                       </p>
-                    )}
+                      {archive.firstText && (
+                        <p className="history-preview truncate font-sans text-sm font-medium">
+                          <span className="text-[#5f735e] font-bold">起點：</span>
+                          {archive.firstText}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-[#7A756D] shrink-0" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-[#7A756D] shrink-0" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

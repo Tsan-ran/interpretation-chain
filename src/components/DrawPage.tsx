@@ -2,15 +2,17 @@ import React, { useState } from "react";
 import { Paintbrush, ArrowDown, Sparkles } from "lucide-react";
 import DrawingCanvas from "./DrawingCanvas";
 import LargeButton from "./LargeButton";
+import NicknameField from "./NicknameField";
 
 interface DrawPageProps {
   previousText: string;
-  onSaveDrawing: (dataUrl: string) => void;
+  onSaveDrawing: (dataUrl: string, authorName?: string) => void;
 }
 
 export default function DrawPage({ previousText, onSaveDrawing }: DrawPageProps) {
   const [drawingUrl, setDrawingUrl] = useState<string>("");
   const [isEmpty, setIsEmpty] = useState<boolean>(true);
+  const [nickname, setNickname] = useState<string>("");
 
   const handleCanvasChange = (dataUrl: string) => {
     setDrawingUrl(dataUrl);
@@ -22,7 +24,8 @@ export default function DrawPage({ previousText, onSaveDrawing }: DrawPageProps)
       alert("你的畫紙好像還是一片空白。請動筆畫點東西再送出喔！");
       return;
     }
-    onSaveDrawing(drawingUrl);
+    onSaveDrawing(drawingUrl, nickname.trim() || undefined);
+    setNickname("");
   };
 
   return (
@@ -53,6 +56,8 @@ export default function DrawPage({ previousText, onSaveDrawing }: DrawPageProps)
           initialDataUrl={drawingUrl}
         />
       </div>
+
+      <NicknameField value={nickname} onChange={setNickname} />
 
       <div className="flex justify-center pt-2">
         <LargeButton
