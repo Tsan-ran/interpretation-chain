@@ -1,0 +1,6 @@
+{
+  "name": "詮釋的接龍",
+  "description": "一句話、一幅圖，在傳遞中會變成什麼？觀察本機互動與轉譯紀錄系統。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
